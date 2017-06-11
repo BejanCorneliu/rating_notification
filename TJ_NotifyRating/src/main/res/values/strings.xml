@@ -1,0 +1,28 @@
+<resources>
+    <string name="app_name">TJ_NotifyRating</string>
+
+    <string name="natificationRateTitle">Please rate me!</string>
+    <string name="natificationRateMessage">I would appreciate a lot if you spend a little time to rate me</string>
+
+    <string name="push_notification_0" translatable="false">level_0</string>
+    <string name="push_notification_flag" translatable="false">pusNotificationFlag</string>
+    <string name="push_notification_idle" translatable="false">pusNotificationIdle</string>
+    <string name="push_notification_service" translatable="false">pusNotificationService</string>
+    <string name="push_notification_was_service_started" translatable="false">pushNotificationWasServiceStarted</string>
+    <string name="push_notification_key" translatable="false">pushNotification</string>
+
+    <string name="intent_key_intent" translatable="false">intent</string>
+    <string name="intent_key_first_launch" translatable="false">firstLaunch</string>
+    <string name="intent_key_notification" translatable="false">notification</string>
+
+    <string name="pref_key_timeNotificationAppears">timesNotification</string>
+    <string name="pref_key_tapOnIntent">tapOnIntent</string>
+    <string name="pref_key_nrTimes">nrTimes</string>
+    <string name="pref_key_debug">debug</string>
+    <string name="pref_key_millisSecondsDelayNotification">millisDelay</string>
+    <string name="pref_key_millisSecondsDelayAttempts">millisAttemts</string>
+
+    <string name="pref_key_notification_title">notifTitle</string>
+    <string name="pref_key_notification_subtitle">notifSubtitle</string>
+    <string name="pref_key_notification_icon">notifIcon</string>
+</resources>

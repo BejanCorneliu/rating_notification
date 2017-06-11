@@ -1,0 +1,28 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+
+    package="com.example.tj_notifyrating">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+
+    <application
+        android:allowBackup="true" android:label="@string/app_name"
+        android:supportsRtl="true">
+
+        <activity
+            android:name=".Module_NotifyRating"
+            android:screenOrientation="portrait"
+            />
+            <receiver android:name=".NetworkChangeReceiver" >
+                <intent-filter>
+                    <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+                    <action android:name="android.net.wifi.STATE_CHANGE" />
+                    <action android:name="android.net.wifi.WIFI_STATE_CHANGED" />
+                </intent-filter>
+            </receiver>
+        <service android:name=".ServiceNotification"/>
+    </application>
+
+</manifest>
