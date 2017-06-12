@@ -7,44 +7,42 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.preference.PreferenceManager;
-import android.util.Log;
+
+import com.example.tj_notifyrating.utils.Stuff;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.example.tj_notifyrating.Constants.DEFAULT_DEBUG_MODE;
-import static com.example.tj_notifyrating.Constants.DEFAULT_DELAY_BETWEEN_ATTEMPTS_INTERNET_NOT_SURE;
-import static com.example.tj_notifyrating.Constants.DEFAULT_DELAY_BETWEEN_NOTIFICATIONS;
-import static com.example.tj_notifyrating.Constants.DEFAULT_DELAY_NR_TIMES;
+import static com.example.tj_notifyrating.utils.Constants.DEFAULT_DEBUG_MODE;
+import static com.example.tj_notifyrating.utils.Constants.DEFAULT_DELAY_BETWEEN_ATTEMPTS_INTERNET_NOT_SURE;
+import static com.example.tj_notifyrating.utils.Constants.DEFAULT_DELAY_BETWEEN_NOTIFICATIONS;
+import static com.example.tj_notifyrating.utils.Constants.DEFAULT_NR_OF_NOTIFICATIONS;
 
 public class Module_NotifyRating {
-
-    /* notification Title */
-    private String notificationTitle;
-    /* notification Subtitle */
-    private String notificationSubtitle;
     /* Name of the class that should be open when user tap on notification */
     private Class<?> className;
-    /* milliseconds delay between onCreate() time and first notification*/
+    /* milliseconds delay between notifications*/
     private int millisSecondsDelay = DEFAULT_DELAY_BETWEEN_NOTIFICATIONS;
-    /* milliseconds delay between new attempts when internet connection is not sure*/
+    /* milliseconds delay between new attempts when internet connection is not secure*/
     private int millisSecondsAttempts = DEFAULT_DELAY_BETWEEN_ATTEMPTS_INTERNET_NOT_SURE;
-    /* number of times of notifications */
-    private int nrTimes = DEFAULT_DELAY_NR_TIMES;
+    /* how many notifications to send */
+    private int nrOfNotifications = DEFAULT_NR_OF_NOTIFICATIONS;
     /* if set to "true" Log.d will print */
     private Boolean debugMode = DEFAULT_DEBUG_MODE;
     /* The intent for tap on notification action */
-    private Intent onTapIntent;
-    /* Contains the prefered flags for the onTapIntent; If this is null ...default flags will be set */
-    private ArrayList<Integer> intentFlags = null;
+    private Intent onNotificationTapIntent;
+    /* Contains the prefered flags set by user for the onNotificationTapIntent; If this is null ...default flags will be set */
+    private ArrayList<Integer> custonIntentFlags = null;
     /* Needed for context/activity */
     private Activity activity;
-    /* ArrayList that will colect all logs and prind at the end */
+    /* ArrayList that will colect all logs and print at the end if "debugMode" is true */
     private ArrayList<String> logsCollector;
-    /* Name of the ServiceWs */
+    /* Name of the Service */
     private Class<?> serviceName = ServiceNotification.class;
-    /* If set, libray will search for all apps that contains given pakageName and if more than 1 are find the Service will never run on this instance*/
+    /* If set, libray will search for all apps that contains given pakageName and if more than 1 are find : the Service will never run on this instance*/
     private String packageName = "";
+    /* Stuff colection */
+    private Stuff myStuff;
     /* SharePref */
     private SharedPreferences shared;
     private SharedPreferences.Editor sharedEdit;
@@ -55,29 +53,29 @@ public class Module_NotifyRating {
      * @param activity       - activity
      * @param disableService - dislable service
      */
-
+    @SuppressLint("CommitPrefEdits")
     public Module_NotifyRating(Activity activity, Boolean disableService) {
         this.activity = activity;
-
+        this.myStuff = new Stuff();
         shared = PreferenceManager.getDefaultSharedPreferences(activity);
         sharedEdit = PreferenceManager.getDefaultSharedPreferences(activity).edit();
-
         if (!disableService) {
             disableNotification();
         }
     }
 
     /**
-     * CONSTRUCTOR_CLASS
+     * SETTER METHOD
      *
-     * @param activity  - activity
-     * @param className - activity name that should be open when user tap on notification
+     * @param activity    - activity
+     * @param className   - activity name that should be open when user tap on notification
+     * @param packageName - common name of the packageName to search for any other instance flavors
      */
     @SuppressWarnings("unused")
     public Module_NotifyRating(Activity activity, Class<?> className, String packageName) {
         this.activity = activity;
         this.className = className;
-
+        this.myStuff = new Stuff();
         if (packageName != null) {
             this.packageName = packageName;
         }
@@ -86,12 +84,16 @@ public class Module_NotifyRating {
         sharedEdit = PreferenceManager.getDefaultSharedPreferences(activity).edit();
     }
 
+    /**
+     * SETTER METHOD
+     *
+     * @param title    - custom title for notification
+     * @param subtitle - custom subtitle for notification
+     * @param icon     - custom icon drawable for notification
+     * @return current instance
+     */
     @SuppressWarnings("unused")
     public Module_NotifyRating set_TextAndIcon(String title, String subtitle, int icon) {
-
-        this.notificationTitle = title;
-        this.notificationSubtitle = subtitle;
-
         sharedEdit.putString(activity.getResources().getString(R.string.pref_key_notification_title), title);
         sharedEdit.putString(activity.getResources().getString(R.string.pref_key_notification_subtitle), subtitle);
         sharedEdit.putInt(activity.getResources().getString(R.string.pref_key_notification_icon), icon);
@@ -102,13 +104,14 @@ public class Module_NotifyRating {
     /**
      * SETTER METHOD
      *
-     * @param millisSecondsDelay - delay until notification should appear
-     * @param nrTimes            - number of times notification should be send ( hoursDelay between them )
+     * @param millisSecondsDelay    - delay until notification should appear
+     * @param nrOfNotifications     - number of times notification should be send ( hoursDelay between them )
+     * @param millisSecondsAttempts - millis delay between attempts when internet is not secure
      */
     @SuppressWarnings("unused")
-    public Module_NotifyRating set_HoursAndRepeateTimes(int millisSecondsDelay, int nrTimes, int millisSecondsAttempts) {
+    public Module_NotifyRating set_HoursAndRepeateTimes(int millisSecondsDelay, int nrOfNotifications, int millisSecondsAttempts) {
         this.millisSecondsDelay = millisSecondsDelay;
-        this.nrTimes = nrTimes;
+        this.nrOfNotifications = nrOfNotifications;
         this.millisSecondsAttempts = millisSecondsAttempts;
         return this;
     }
@@ -120,7 +123,7 @@ public class Module_NotifyRating {
      */
     @SuppressWarnings("unused")
     public Module_NotifyRating set_NewFlagsForOnTapIntent(ArrayList<Integer> newIntentFlag) {
-        this.intentFlags = newIntentFlag;
+        this.custonIntentFlags = newIntentFlag;
         return this;
     }
 
@@ -145,14 +148,10 @@ public class Module_NotifyRating {
         logsCollector.add("**********************Start Module Rating**********************");
 
         if (setUp_searchForFlavors()) {
-            logsCollector.add("*MORE THAN ONE FLAVORS ; NO SERVICE ; CLOSE");
-            setUp_ShowLogs();
+            logsCollector.add("* MORE THAN ONE FLAVORS ; NO SERVICE ; CLOSE LIB");
+            myStuff.showLogs(debugMode, logsCollector);
             return;
         }
-
-        shared = PreferenceManager.getDefaultSharedPreferences(activity);
-        sharedEdit = PreferenceManager.getDefaultSharedPreferences(activity).edit();
-
 
         logsCollector.add("*");
         logsCollector.add("* Service Status [ON(true)/OFF(false)] : " + stateOfNotification());
@@ -164,15 +163,21 @@ public class Module_NotifyRating {
             setUp_IntentOfNotification();
             setUp_StartService();
             setUp_SaveSettingsInPref();
-            setUp_FlagServiceStarted();
             setUp_ShowVariables();
         } else {
             logsCollector.add("* Service Info :  has been previously initialized");
             logsCollector.add("*");
         }
-        setUp_ShowLogs();
+        myStuff.showLogs(debugMode, logsCollector);
     }
 
+    /**
+     * In this method a search for any flavor is made using packageName provided ( if it was provided )
+     * <p>
+     * return false : if no packageName was provided or if just one flavor is found
+     *
+     * @return true : if more than 1 flavor is found ( assume that the first installed flavor has a running instance of this library
+     */
     private boolean setUp_searchForFlavors() {
 
         if (packageName.length() < 3) {
@@ -196,11 +201,11 @@ public class Module_NotifyRating {
 
         if (flavorsCount < 2) {
             logsCollector.add("*");
-            logsCollector.add("* Less than 2 flavors for entered packageNme("+packageName+"); Service will run : true");
+            logsCollector.add("* Less than 2 flavors for entered packageNme(" + packageName + "); Service will run : true");
             return false;
         } else {
             logsCollector.add("*");
-            logsCollector.add("* Mote than 1 flavors for entered packageNme("+packageName+") ; Service will run : false");
+            logsCollector.add("* Mote than 1 flavors for entered packageNme(" + packageName + ") ; Service will run : false");
             return true;
         }
     }
@@ -208,20 +213,22 @@ public class Module_NotifyRating {
     private void setUp_ShowVariables() {
         logsCollector.add("*");
         logsCollector.add("* Variables : ");
-        logsCollector.add("* Delay Between any 2 notifications : " + millisSecondsDelay + " (millis)");
-        logsCollector.add("* Delay Between attempts internetNoSure : " + millisSecondsAttempts + " (millis)");
-        logsCollector.add("* Number of notification to be set : " + nrTimes);
+        logsCollector.add("* Delay Between any 2 notifications : " + millisSecondsDelay + " (millis) | "+myStuff.millisToTime(millisSecondsDelay));
+        logsCollector.add("* Delay Between attempts internetNoSure : " + millisSecondsAttempts + " (millis) | "+myStuff.millisToTime(millisSecondsAttempts));
+        logsCollector.add("* Number of notification to be set : " + nrOfNotifications);
         logsCollector.add("* Notification Title : " + shared.getString(activity.getResources().getString(R.string.pref_key_notification_title), activity.getResources().getString(R.string.natificationRateTitle)));
         logsCollector.add("* Notification Subtitle : " + shared.getString(activity.getResources().getString(R.string.pref_key_notification_subtitle), activity.getResources().getString(R.string.natificationRateMessage)));
         logsCollector.add("*");
     }
 
     private void setUp_SaveSettingsInPref() {
-        sharedEdit.putString(activity.getResources().getString(R.string.pref_key_tapOnIntent), onTapIntent.toURI());
+        sharedEdit.putString(activity.getResources().getString(R.string.pref_key_tapOnIntent), onNotificationTapIntent.toURI());
         sharedEdit.putInt(activity.getResources().getString(R.string.pref_key_millisSecondsDelayNotification), millisSecondsDelay);
         sharedEdit.putInt(activity.getResources().getString(R.string.pref_key_millisSecondsDelayAttempts), millisSecondsAttempts);
-        sharedEdit.putInt(activity.getResources().getString(R.string.pref_key_nrTimes), nrTimes);
+        sharedEdit.putInt(activity.getResources().getString(R.string.pref_key_nrTimes), nrOfNotifications);
         sharedEdit.putBoolean(activity.getResources().getString(R.string.pref_key_debug), debugMode);
+        sharedEdit.putBoolean(activity.getResources().getString(R.string.push_notification_was_service_started), true);
+        sharedEdit.putBoolean(activity.getResources().getString(R.string.push_notification_flag), true);
         sharedEdit.apply();
 
         logsCollector.add("* 3) Save Settings in Pref");
@@ -232,23 +239,23 @@ public class Module_NotifyRating {
      */
     private void setUp_IntentOfNotification() {
 
-        if (intentFlags == null) {
-            intentFlags = new ArrayList<>();
-            intentFlags.add(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intentFlags.add(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            intentFlags.add(Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            intentFlags.add(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            logsCollector.add("* 1) Set onTapNotificationIntent flags : Default (" + intentFlags.size() + " flags)");
+        if (custonIntentFlags == null) {
+            custonIntentFlags = new ArrayList<>();
+            custonIntentFlags.add(Intent.FLAG_ACTIVITY_NEW_TASK);
+            custonIntentFlags.add(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            custonIntentFlags.add(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            custonIntentFlags.add(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            logsCollector.add("* 1) Set onTapNotificationIntent flags : Default (" + custonIntentFlags.size() + " flags)");
         } else {
-            logsCollector.add("* 1) Set onTapNotificationIntent flags : Custom (" + intentFlags.size() + " flags)");
+            logsCollector.add("* 1) Set onTapNotificationIntent flags : Custom (" + custonIntentFlags.size() + " flags)");
         }
 
-        onTapIntent = new Intent();
-        onTapIntent.setClass(activity, className);
-        for (Integer flag : intentFlags) {
-            onTapIntent.setFlags(flag);
+        onNotificationTapIntent = new Intent();
+        onNotificationTapIntent.setClass(activity, className);
+        for (Integer flag : custonIntentFlags) {
+            onNotificationTapIntent.setFlags(flag);
         }
-        onTapIntent.putExtra(activity.getResources().getString(R.string.intent_key_notification), "click");
+        onNotificationTapIntent.putExtra(activity.getResources().getString(R.string.intent_key_notification), "click");
     }
 
     /**
@@ -256,28 +263,15 @@ public class Module_NotifyRating {
      */
     private void setUp_StartService() {
         Intent i = new Intent(activity, serviceName);
-        i.putExtra(activity.getResources().getString(R.string.intent_key_intent), onTapIntent);
+        i.putExtra(activity.getResources().getString(R.string.intent_key_intent), onNotificationTapIntent);
         i.putExtra(activity.getResources().getString(R.string.intent_key_first_launch), "yes");
         activity.startService(i);
 
         logsCollector.add("* 2) Start Service");
     }
 
-
     /**
-     * Save to pref that ServiceWs was started
-     */
-    private void setUp_FlagServiceStarted() {
-        SharedPreferences.Editor shared = PreferenceManager.getDefaultSharedPreferences(activity).edit();
-        shared.putBoolean(activity.getResources().getString(R.string.push_notification_was_service_started), true);
-        shared.putBoolean(activity.getResources().getString(R.string.push_notification_flag), true);
-        shared.apply();
-    }
-
-    /**
-     * Save to pref that :
-     * - no future notification should be send
-     * - ServiceWs should be stopped when possible
+     * Shut down ALL
      */
     private void disableNotification() {
         sharedEdit.putBoolean(activity.getResources().getString(R.string.push_notification_flag), false);
@@ -286,7 +280,7 @@ public class Module_NotifyRating {
     }
 
     /**
-     * Check if service was started to prevet future startUps
+     * Check if service was started to prevet any new starts
      *
      * @return ture if was started
      */
@@ -295,23 +289,11 @@ public class Module_NotifyRating {
     }
 
     /**
-     * Check if notification service is ON(false)/OFF(true)
+     * Check if Service is ON(false)/OFF(true)
      *
      * @return ture if was started
      */
     private boolean stateOfNotification() {
         return shared.getBoolean(activity.getResources().getString(R.string.push_notification_flag), true);
-    }
-
-    /**
-     * if "debugMode" == "true" print the collected logs
-     */
-    private void setUp_ShowLogs() {
-        if (debugMode) {
-            for (String log : logsCollector) {
-                Log.d("debugMode_NotifyRating", "" + log);
-            }
-            logsCollector.add("*");
-        }
     }
 }

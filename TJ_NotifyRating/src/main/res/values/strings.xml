@@ -7,6 +7,7 @@
     <string name="push_notification_0" translatable="false">level_0</string>
     <string name="push_notification_flag" translatable="false">pusNotificationFlag</string>
     <string name="push_notification_idle" translatable="false">pusNotificationIdle</string>
+    <string name="push_notification_wakeup_time" translatable="false">pushNotificationWakeup</string>
     <string name="push_notification_service" translatable="false">pusNotificationService</string>
     <string name="push_notification_was_service_started" translatable="false">pushNotificationWasServiceStarted</string>
     <string name="push_notification_key" translatable="false">pushNotification</string>

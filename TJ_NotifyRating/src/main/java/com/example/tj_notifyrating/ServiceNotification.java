@@ -13,41 +13,34 @@ import android.net.NetworkInfo;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
-import android.util.Log;
-
-
-import com.example.tj_notifyrating.retrofit.ServiceWs;
-
-import java.io.IOException;
+import com.example.tj_notifyrating.utils.Stuff;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-
-import retrofit2.Call;
-import retrofit2.Response;
-
-import static com.example.tj_notifyrating.Constants.DEFAULT_DEBUG_MODE;
-import static com.example.tj_notifyrating.Constants.DEFAULT_DELAY_BETWEEN_ATTEMPTS_INTERNET_NOT_SURE;
-import static com.example.tj_notifyrating.Constants.DEFAULT_DELAY_BETWEEN_NOTIFICATIONS;
-import static com.example.tj_notifyrating.Constants.DEFAULT_DELAY_NR_TIMES;
+import java.util.Date;
+import static com.example.tj_notifyrating.utils.Constants.DEFAULT_DEBUG_MODE;
+import static com.example.tj_notifyrating.utils.Constants.DEFAULT_DELAY_BETWEEN_ATTEMPTS_INTERNET_NOT_SURE;
+import static com.example.tj_notifyrating.utils.Constants.DEFAULT_DELAY_BETWEEN_NOTIFICATIONS;
+import static com.example.tj_notifyrating.utils.Constants.DEFAULT_NR_OF_NOTIFICATIONS;
 
 public class ServiceNotification extends Service {
 
     /* number of times notification was send */
     private int nrTimesNotficationAppear;
     /* number of time notification should appear one after one by millisSecondsDelay */
-    private int nrTimesNotficationShouldAppear;
+    private int nrOfNotifications;
     /* milliseconds delay between onCreate() time and first notification*/
     private int millisSecondsDelay;
     /* milliseconds delay between new attempts when internet connection is not sure*/
     private int millisSecondsAttempts;
-    /* number of times of notifications */
-    private int nrTimes;
     /* if set to "true" Log.d will print */
     private boolean debugMode;
     /* if is set to "false" => no notification and no service alarm*/
     private Boolean pushFlag;
     /* waiting to start ....*/
-    private Intent onTapIntent,restart;
+    private Intent onNotificationTapIntent;
     /* ArrayList that will colect all logs and prind at the end */
+    /* utils */
+    private Stuff myStuff;
 
     private String notificationTitle,notificationSubtitle;
     private int notificationIcon;
@@ -61,6 +54,9 @@ public class ServiceNotification extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
+        sharedEdit = PreferenceManager.getDefaultSharedPreferences(this).edit();
+        myStuff = new Stuff();
+
         getSettingsFromPref();
         logsCollector = new ArrayList<>();
 
@@ -72,7 +68,7 @@ public class ServiceNotification extends Service {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    notificationLogin(ServiceNotification.this,onTapIntent);
+                    notificationLogic(ServiceNotification.this,onNotificationTapIntent);
                 }
             }).start();
         }
@@ -91,29 +87,32 @@ public class ServiceNotification extends Service {
                 nextWakeUp = millisSecondsDelay; //corection
             }
 
-            logsCollector.add("* Service wake up : true | Next wake up in : "+nextWakeUp+" millis");
+            logsCollector.add("* Service wake up : true | Next wake up in : "+nextWakeUp+" millis | "+myStuff.millisToTime(nextWakeUp)+"  | "+myStuff.convertDate(((System.currentTimeMillis()+nextWakeUp))));
+
+            sharedEdit.putLong(getResources().getString(R.string.push_notification_wakeup_time), System.currentTimeMillis()+nextWakeUp);
+            sharedEdit.commit();
+
+
             ((AlarmManager) getSystemService(Context.ALARM_SERVICE)).set(0, System.currentTimeMillis() + nextWakeUp, PendingIntent.getService(this, 0, new Intent(getApplicationContext(), ServiceNotification.class), 0));
         } else {
             logsCollector.add("* Service wake up : false");
         }
 
-        setUp_ShowLogs();
+        myStuff.showLogs(debugMode,logsCollector);
     }
 
-    private void notificationLogin(Context context,Intent intent) {
+    private void notificationLogic(Context context,Intent intent) {
 
         Boolean sercureFlag=false;
-        Boolean internetConnectionLive = checkForInternetConnection();
-        Boolean internetConnection = haveNetworkConnection();
+        Boolean internetConnectionLive = myStuff.checkForInternetConnection(this);
+        Boolean internetConnection = myStuff.haveNetworkConnection(this);
 
-        sharedEdit = PreferenceManager.getDefaultSharedPreferences(this).edit();
-
-        if (nrTimesNotficationAppear<=nrTimesNotficationShouldAppear) {
+        if (nrTimesNotficationAppear<=nrOfNotifications) {
              sercureFlag = true;
         }
 
         logsCollector.add("* PushFlag : "+pushFlag);
-        logsCollector.add("* SecureFlag : "+sercureFlag +" ("+nrTimesNotficationAppear+"<="+nrTimesNotficationShouldAppear+")");
+        logsCollector.add("* SecureFlag : "+sercureFlag +" ("+nrTimesNotficationAppear+"<="+nrOfNotifications+")");
         logsCollector.add("* InternetConection : "+internetConnection);
         logsCollector.add("* InternetConnectionLive : "+internetConnectionLive+" ("+typeInternetLive+")");
         logsCollector.add("*");
@@ -153,18 +152,6 @@ public class ServiceNotification extends Service {
         stopSelf();
     }
 
-    private boolean checkForInternetConnection() {
-        Boolean isInternetConnection;
-        Call<Void> mCall = ServiceWs.getInstance(this).getInterface().getGoogleImages();
-        try
-        {
-            mCall.execute();
-            isInternetConnection = true;
-        } catch (IOException e) {
-            isInternetConnection = false;
-        }
-        return isInternetConnection;
-    }
 
     private void sendPushNotification(Context context,Intent myIntent) {
 
@@ -191,51 +178,18 @@ public class ServiceNotification extends Service {
             SharedPreferences shared = PreferenceManager.getDefaultSharedPreferences(this);
 
             nrTimesNotficationAppear = shared.getInt(getResources().getString(R.string.pref_key_timeNotificationAppears),1);
-            nrTimesNotficationShouldAppear = shared.getInt(getResources().getString(R.string.pref_key_nrTimes),DEFAULT_DELAY_NR_TIMES);
+            nrOfNotifications = shared.getInt(getResources().getString(R.string.pref_key_nrTimes),DEFAULT_NR_OF_NOTIFICATIONS);
             millisSecondsDelay = shared.getInt(getResources().getString(R.string.pref_key_millisSecondsDelayNotification), DEFAULT_DELAY_BETWEEN_NOTIFICATIONS);
             millisSecondsAttempts = shared.getInt(getResources().getString(R.string.pref_key_millisSecondsDelayAttempts), DEFAULT_DELAY_BETWEEN_ATTEMPTS_INTERNET_NOT_SURE);
-            nrTimes = shared.getInt(getResources().getString(R.string.pref_key_nrTimes), DEFAULT_DELAY_NR_TIMES);
             debugMode = shared.getBoolean(getResources().getString(R.string.pref_key_debug), DEFAULT_DEBUG_MODE);
-            onTapIntent = Intent.getIntent(shared.getString(getResources().getString(R.string.pref_key_tapOnIntent), ""));
+            onNotificationTapIntent = Intent.getIntent(shared.getString(getResources().getString(R.string.pref_key_tapOnIntent), ""));
             pushFlag=shared.getBoolean(getResources().getString(R.string.push_notification_flag), false);
-
 
             notificationTitle = shared.getString(getResources().getString(R.string.pref_key_notification_title),getString(R.string.natificationRateTitle));
             notificationSubtitle = shared.getString(getResources().getString(R.string.pref_key_notification_subtitle),getString(R.string.natificationRateTitle));
             notificationIcon = shared.getInt(getResources().getString(R.string.pref_key_notification_icon),R.drawable.ic_launcher);
-
-
         } catch (Exception e) {}
     }
 
-    /**
-     * if "debugMode" == "true" print the collected logs
-     */
-    private void setUp_ShowLogs() {
-        if (debugMode) {
-            for (String log : logsCollector) {
-                Log.d("debugMode_NotifyRating", "" + log);
-            }
-            logsCollector.add("*");
-        }
-    }
 
-    private boolean haveNetworkConnection() {
-        boolean haveConnectedWifi = false;
-        boolean haveConnectedMobile = false;
-
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo[] netInfo = cm.getAllNetworkInfo();
-        for (NetworkInfo ni : netInfo) {
-            if (ni.getTypeName().equalsIgnoreCase("WIFI"))
-                if (ni.isConnected())
-                    haveConnectedWifi = true;
-                    typeInternetLive = "wifi";
-            if (ni.getTypeName().equalsIgnoreCase("MOBILE"))
-                if (ni.isConnected())
-                    haveConnectedMobile = true;
-                    typeInternetLive = "mobile";
-        }
-        return haveConnectedWifi || haveConnectedMobile;
-    }
 }

@@ -15,7 +15,7 @@
             android:name=".Module_NotifyRating"
             android:screenOrientation="portrait"
             />
-            <receiver android:name=".NetworkChangeReceiver" >
+            <receiver android:name=".recivers.NetworkChangeReceiver" >
                 <intent-filter>
                     <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
                     <action android:name="android.net.wifi.STATE_CHANGE" />
@@ -23,13 +23,13 @@
                 </intent-filter>
             </receiver>
 
-        <receiver android:name=".BootCompletedReciver" android:enabled="true" android:exported="false">
+        <receiver android:name=".recivers.BootCompletedReciver" android:enabled="true" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".ShutdownReceiver">
+        <receiver android:name=".recivers.ShutdownReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.ACTION_SHUTDOWN" />
                 <action android:name="android.intent.action.QUICKBOOT_POWEROFF" />
