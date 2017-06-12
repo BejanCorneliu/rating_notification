@@ -39,10 +39,9 @@ public class NetworkChangeReceiver extends BroadcastReceiver {
         Boolean pushFlag=shared.getBoolean(context.getResources().getString(R.string.push_notification_flag), false);
         Boolean pushIdle=shared.getBoolean(context.getResources().getString(R.string.push_notification_idle), false);
 
-        Log.d("debugMode_NotifyRating", "*");
+        Log.d("debugMode_NotifyRating","*");
         Log.d("debugMode_NotifyRating","* PushFlag : "+pushFlag);
         Log.d("debugMode_NotifyRating","* PushIdle : "+pushIdle);
-
 
         if (!pushFlag && pushIdle) {
 
