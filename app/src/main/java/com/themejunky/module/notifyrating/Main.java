@@ -21,7 +21,7 @@ public class Main extends AppCompatActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                new Module_NotifyRating(Main.this,Main.class,"com.keyboard").set_TextAndIcon("Title","Subtite",R.drawable.app_logo).set_DebugMode(true).set_HoursAndRepeateTimes(30000,10,20000).start();
+                new Module_NotifyRating(Main.this,Main.class,"com.keyboard").set_TextAndIcon("Title","Subtite",R.drawable.app_logo).set_DebugMode(true).set_HoursAndRepeateTimes(20000,50,15000).start();
             }
         }).start();
 
